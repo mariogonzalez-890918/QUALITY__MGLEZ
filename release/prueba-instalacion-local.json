@@ -1,0 +1,32 @@
+{
+  "fecha": "2026-10-21",
+  "version": "0.1.1",
+  "instalador_exit_code": 0,
+  "operaciones_exit_code_0": [
+    "--secure-data",
+    "--init",
+    "install bajo LocalService con inicio auto",
+    "sc failure",
+    "sc failureflag",
+    "--wait 30 start",
+    "--health"
+  ],
+  "servicio": {
+    "nombre": "QualityLite",
+    "estado": "Running",
+    "inicio": "Auto",
+    "cuenta": "NT AUTHORITY\\LocalService"
+  },
+  "url_local": "http://127.0.0.1:8081/",
+  "health": "ok",
+  "pagina_inicial_http": 200,
+  "asistente_visible": true,
+  "pytest_aprobadas": 30,
+  "comprobaciones_ejecutable_aprobadas": 9,
+  "pendientes": [
+    "Reinstalación: segunda ejecución elevada bloqueada por revisión automática",
+    "Desinstalación conservando datos",
+    "Arranque después de reinicio completo de Windows",
+    "Acceso desde otro equipo de la LAN"
+  ]
+}

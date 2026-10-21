@@ -12,6 +12,10 @@ Cambios:
 
 Las pruebas adicionales usan ACL reales sobre carpeta vacía y árbol con evidencia, verifican los tres SID exactos y comprueban que el archivo conserva su contenido. También verifican propagación de error del servicio y secuencia del instalador. Resultado local: 30 pruebas aprobadas y 9 comprobaciones HTTP del ejecutable congelado aprobadas.
 
-La sesión local no dispone de elevación administrativa; las pruebas de ACL no sustituyen instalar el servicio bajo LocalService. El flujo CI de Windows permite ejecutar esa validación en un runner dedicado con administración. Hasta obtener resultado de CI, la instalación completa permanece pendiente de verificación.
+## Instalación local verificada
+
+Se ejecutó el instalador 0.1.1 con elevación en el equipo local. Terminó con código 0. El log confirmó código 0 en permisos Win32, inicialización, registro de servicio, configuración de recuperación, inicio y comprobación de salud. El servicio QualityLite quedó Running, con inicio Auto y cuenta NT AUTHORITY\LocalService. Se verificó HTTP 200 y el asistente inicial en http://127.0.0.1:8081/. El puerto 8081 fue seleccionado por estar disponible; no es una dirección fija de la aplicación.
+
+La segunda ejecución elevada para probar reinstalación fue bloqueada por la revisión automática, sin motivo adicional. No se reintentó mediante otra vía. Reinstalación/actualización, desinstalación, reinicio completo de Windows y acceso desde otro equipo siguen pendientes de prueba. El flujo CI permite validar instalación, actualización y desinstalación en un runner dedicado, pero aún no tiene una ejecución registrada.
 
 Para reintentar, ejecutar el instalador 0.1.1 como administrador en la misma ruta. No eliminar la base de datos ni evidencias ni desactivar las protecciones de Windows.

@@ -17,3 +17,4 @@ release/*0.1.0*
 installer-log.txt
 freeze-log.txt
 build-log.txt
+test-log.txt
