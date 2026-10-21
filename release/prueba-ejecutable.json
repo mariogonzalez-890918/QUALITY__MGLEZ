@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-21T07:40:39.362538",
+  "result": "passed",
+  "checks": [
+    "Ejecutable --init sin Python en PATH",
+    "Waitress responde por HTTP real",
+    "Comprobación de salud del ejecutable",
+    "Asistente inicial HTTP y token local",
+    "Inicio de sesión y tablero",
+    "Plantillas y recursos estáticos empaquetados",
+    "Creación documental persistente",
+    "PDF y Excel desde binario congelado",
+    "Respaldo completo desde HTTP real"
+  ],
+  "data_directory": "C:\\Users\\siste\\OneDrive\\Documentos\\ChatGPT\\JAD\\qualitylite\\test-data\\frozen-20261021074026",
+  "port": 65208,
+  "note": "Proceso de prueba, no servicio Windows. Instalador no ejecutado."
+}

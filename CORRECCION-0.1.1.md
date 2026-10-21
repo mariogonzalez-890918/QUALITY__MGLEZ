@@ -10,7 +10,7 @@ Cambios:
 - Se espera hasta 30 segundos al detener/iniciar servicio. Las actualizaciones reconfiguran el servicio existente, sin eliminarlo antes de volver a registrarlo.
 - Los comandos del servicio escriben logs/service-commands.log; el instalador activa su log propio y muestra códigos concretos. Si no se puede escribir en ProgramData, el error se registra en %TEMP%\QualityLite-install-error.log.
 
-Las pruebas adicionales usan ACL reales sobre carpeta vacía y árbol con evidencia, verifican los tres SID exactos y comprueban que el archivo conserva su contenido. También verifican propagación de error del servicio y secuencia del instalador.
+Las pruebas adicionales usan ACL reales sobre carpeta vacía y árbol con evidencia, verifican los tres SID exactos y comprueban que el archivo conserva su contenido. También verifican propagación de error del servicio y secuencia del instalador. Resultado local: 30 pruebas aprobadas y 9 comprobaciones HTTP del ejecutable congelado aprobadas.
 
 La sesión local no dispone de elevación administrativa; las pruebas de ACL no sustituyen instalar el servicio bajo LocalService. El flujo CI de Windows permite ejecutar esa validación en un runner dedicado con administración. Hasta obtener resultado de CI, la instalación completa permanece pendiente de verificación.
 
