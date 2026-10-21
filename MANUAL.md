@@ -1,8 +1,8 @@
-# QualityLite 0.2.0 — manual de instalación, administración y usuario
+# QualityLite 0.2.1 — manual de instalación, administración y usuario
 
 ## Instalación
 
-Ejecutar `QualityLite-Desktop-Setup-0.2.0-x64.exe` como administrador en Windows x64. No requiere Python, pip ni Node. Se instala en Program Files, crea el servicio automático QualityLite bajo LocalService, configura recuperación de fallos y verifica `/health`. Los datos permanecen en `C:\ProgramData\QualityLite`. En instalación inicial busca un puerto libre entre 8080 y 8180. Si ninguno está disponible o una configuración previa tiene conflicto, consultar `launcher-error.log`, modificar `server.json` con el servicio detenido y repetir instalación.
+Ejecutar `QualityLite-Desktop-Setup-0.2.1-x64.exe` como administrador en Windows x64. No requiere Python, pip ni Node. Se instala en Program Files, crea el servicio automático QualityLite bajo LocalService, configura recuperación de fallos y verifica `/health`. Los datos permanecen en `C:\ProgramData\QualityLite`. En instalación inicial busca un puerto libre entre 8080 y 8180. Si ninguno está disponible o una configuración previa tiene conflicto, consultar `launcher-error.log`, modificar `server.json` con el servicio detenido y repetir instalación.
 
 Abrir el acceso directo QualityLite en el servidor. Copiar el token de `setup-token.txt` desde ProgramData (requiere administrador local); completar empresa y superusuario con contraseña mínima de 12 caracteres. No hay clave universal. El token se elimina después. El asistente se bloquea tras finalizar.
 
@@ -43,17 +43,21 @@ Entorno de desarrollo Windows x64 con Python 3.12: crear `.venv`, instalar `requ
 No existe afirmación automática de conformidad ISO. La empresa debe revisar documentos y validar el sistema según sus necesidades.
 
 
-## Instalación en servidores (revisión 0.2.0)
+## Instalación en servidores (revisión 0.2.1)
 
-Consultar CORRECCION-0.2.0.md para la matriz de sistemas objetivo y resultados reales. Los fallos se diagnostican en ProgramData\QualityLite-SetupLogs. La preparación de permisos utiliza un binario nativo independiente y el acceso directo utiliza connection.json público de Program Files. No eliminar bases ni evidencias ni deshabilitar las protecciones del servidor.
+Consultar CORRECCION-0.2.1.md para la matriz de sistemas objetivo y resultados reales. Los fallos se diagnostican en ProgramData\QualityLite-SetupLogs. La preparación de permisos utiliza un binario nativo independiente y el acceso directo utiliza connection.json público de Program Files. No eliminar bases ni evidencias ni deshabilitar las protecciones del servidor.
 
 
-## Ediciones Servidor y Escritorio 0.2.0
+## Ediciones Servidor y Escritorio 0.2.1
 
-Para un servidor utilice QualityLite-Server-Setup-0.2.0-x64.exe. En el asistente indique IP y puerto; 0.0.0.0 significa todas las interfaces IPv4 y requiere marcar autorización LAN. Deje IP/puerto vacíos al actualizar para conservar los valores anteriores. No abre acceso a Internet. Para Windows 10/11 utilice QualityLite-Desktop-Setup-0.2.0-x64.exe. Ambas ediciones conservan los mismos datos y servicio.
+Para un servidor utilice QualityLite-Server-Setup-0.2.1-x64.exe. En el asistente indique IP y puerto; 0.0.0.0 significa todas las interfaces IPv4 y requiere marcar autorización LAN. Deje IP/puerto vacíos al actualizar para conservar los valores anteriores. No abre acceso a Internet. Para Windows 10/11 utilice QualityLite-Desktop-Setup-0.2.1-x64.exe. Ambas ediciones conservan los mismos datos y servicio.
 
 ## Logotipo y formularios corporativos
 
 Empresa permite cargar su propio logo PNG/JPG (2 MB, 16-4096 píxeles), ajustar la leyenda y el pie de los documentos. Guarde la identidad antes de crear los formatos. Los documentos nuevos conservan esa identidad, incluso si después se reemplaza el logo.
 
 Diseñador de formatos permite Usar modelo editable de solicitud de servicio. Ajuste sus campos, secciones y columnas de tabla. Se guarda en borrador y debe revisarse y aprobarse. En Registros la captura usa una hoja formal; las tablas permiten agregar filas. Editar el borrador permite continuar una atención pendiente. Descargar PDF formal genera una hoja con logo, código, versión, folio, datos y responsables; los espacios de firma son autógrafos, no firmas electrónicas.
+
+## Reparacion de permisos 0.2.1
+
+Reejecute el instalador 0.2.1 elevado sobre la instalacion anterior; conserve ProgramData\QualityLite. El preparador respalda y aplica las ACL mediante acceso administrativo de copia/restauracion, sin cambiar propietarios ni borrar archivos. Si una politica de dominio retira esos derechos y los permisos ordinarios tampoco permiten acceso, el registro indica los privilegios requeridos. Consulte CORRECCION-0.2.1.md.

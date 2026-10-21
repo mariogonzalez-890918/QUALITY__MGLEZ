@@ -18,5 +18,5 @@ try {
  if ($LASTEXITCODE -ne 0) { throw 'Error Inno Setup' }
  & $compiler /DSERVER_EDITION installer.iss
  if ($LASTEXITCODE -ne 0) { throw "Error Inno Setup Servidor" }
- Get-FileHash release\QualityLite-*-Setup-0.2.0-x64.exe -Algorithm SHA256 | Format-List | Out-File release\SHA256.txt
+ Get-FileHash release\QualityLite-*-Setup-0.2.1-x64.exe -Algorithm SHA256 | Format-List | Out-File release\SHA256.txt
 } finally { Pop-Location }

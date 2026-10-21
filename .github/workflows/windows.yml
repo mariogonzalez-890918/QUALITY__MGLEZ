@@ -32,6 +32,9 @@ jobs:
       - name: Ejecutable sin Python en PATH
         shell: pwsh
         run: .\.venv\Scripts\python.exe smoke_frozen.py
+      - name: Recuperar archivo y carpeta con ACL denegada
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe validate_native_restricted.py
       - name: Instalación, servicio, actualización y desinstalación
         shell: pwsh
         run: .\test_installer.ps1
@@ -39,5 +42,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: QualityLite-0.2.0-${{ matrix.os }}
+          name: QualityLite-0.2.1-${{ matrix.os }}
           path: release/

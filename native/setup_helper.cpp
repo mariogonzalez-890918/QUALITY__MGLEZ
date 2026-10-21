@@ -4,6 +4,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <sddl.h>
+#include <aclapi.h>
 #include <string>
 #include <vector>
 #include <stdexcept>
@@ -26,31 +27,80 @@ static void Fail(DWORD code,const std::wstring& action,const std::wstring& path=
  throw Failure{code,message};
 }
 struct Target { std::wstring path; bool directory; std::vector<BYTE> original; bool wasProtected; };
+// Backup intent permite leer/restaurar DACL heredadas de otra cuenta sin tomar
+// posesion ni conceder acceso general. Solo se usa en el proceso elevado.
+class ScopedPrivilege {
+ HANDLE token=nullptr; TOKEN_PRIVILEGES previous{}; bool changed=false;
+public:
+ explicit ScopedPrivilege(const wchar_t* name) {
+  if(!OpenProcessToken(GetCurrentProcess(),TOKEN_ADJUST_PRIVILEGES|TOKEN_QUERY,&token))Fail(GetLastError(),L"No se pudo abrir el token administrativo");
+  TOKEN_PRIVILEGES requested{}; requested.PrivilegeCount=1;
+  if(!LookupPrivilegeValueW(nullptr,name,&requested.Privileges[0].Luid)) { DWORD error=GetLastError();CloseHandle(token);token=nullptr;Fail(error,L"Privilegio desconocido",name); }
+  requested.Privileges[0].Attributes=SE_PRIVILEGE_ENABLED;
+  DWORD size=sizeof(previous); SetLastError(ERROR_SUCCESS);
+  BOOL ok=AdjustTokenPrivileges(token,FALSE,&requested,sizeof(previous),&previous,&size);
+  DWORD error=GetLastError();
+  changed=ok&&error==ERROR_SUCCESS;
+  if(!changed)Log(L"AVISO: privilegio no disponible: "+std::wstring(name)+L". Se intentara con los permisos ordinarios.");
+ }
+ ~ScopedPrivilege() { if(token) { if(changed)AdjustTokenPrivileges(token,FALSE,&previous,0,nullptr,nullptr);CloseHandle(token); } }
+ ScopedPrivilege(const ScopedPrivilege&)=delete;
+};
+class SecurityHandle {
+ HANDLE handle=INVALID_HANDLE_VALUE;
+public:
+ SecurityHandle(const std::wstring& path,bool directory) {
+  handle=CreateFileW(path.c_str(),READ_CONTROL|WRITE_DAC|(directory?FILE_LIST_DIRECTORY:0),
+   FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,
+   FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OPEN_REPARSE_POINT,nullptr);
+  if(handle==INVALID_HANDLE_VALUE)Fail(GetLastError(),L"No se pudo abrir para respaldar/restaurar permisos. La cuenta elevada requiere derechos de copia de seguridad y restauracion si la ACL anterior niega acceso",path);
+  BY_HANDLE_FILE_INFORMATION info{};
+  if(!GetFileInformationByHandle(handle,&info)) { DWORD error=GetLastError();CloseHandle(handle);handle=INVALID_HANDLE_VALUE;Fail(error,L"No se pudo comprobar el archivo",path); }
+  if(info.dwFileAttributes&FILE_ATTRIBUTE_REPARSE_POINT) { CloseHandle(handle);handle=INVALID_HANDLE_VALUE;Fail(ERROR_REPARSE_TAG_INVALID,L"Enlace o reparse point no admitido",path); }
+ }
+ ~SecurityHandle() { if(handle!=INVALID_HANDLE_VALUE)CloseHandle(handle); }
+ operator HANDLE() const { return handle; }
+ SecurityHandle(const SecurityHandle&)=delete;
+};
+static DWORD ApplyDacl(const Target& target,PSECURITY_DESCRIPTOR descriptor,bool protect) {
+ SecurityHandle handle(target.path,target.directory);
+ PACL acl=nullptr; BOOL present=FALSE,defaulted=FALSE;
+ if(!GetSecurityDescriptorDacl(descriptor,&present,&acl,&defaulted))return GetLastError();
+ if(!present)return ERROR_INVALID_SECURITY_DESCR;
+ return SetSecurityInfo(handle,SE_FILE_OBJECT,DACL_SECURITY_INFORMATION|
+  (protect?PROTECTED_DACL_SECURITY_INFORMATION:UNPROTECTED_DACL_SECURITY_INFORMATION),nullptr,nullptr,acl,nullptr);
+}
 static void Collect(const std::wstring& path,std::vector<Target>& targets) {
  DWORD attributes=GetFileAttributesW(path.c_str());
  if(attributes==INVALID_FILE_ATTRIBUTES)Fail(GetLastError(),L"No se pudieron leer atributos",path);
  if(attributes&FILE_ATTRIBUTE_REPARSE_POINT)Fail(ERROR_REPARSE_TAG_INVALID,L"Ruta con enlace, junction o reparse point no admitido; no se modificaron permisos",path);
  Target target{path,(attributes&FILE_ATTRIBUTE_DIRECTORY)!=0,{},false};
- DWORD needed=0;
- GetFileSecurityW(path.c_str(),DACL_SECURITY_INFORMATION,nullptr,0,&needed);
- if(!needed)Fail(GetLastError(),L"No se pueden respaldar permisos; revise propietario o politica del dominio",path);
- target.original.resize(needed);
- if(!GetFileSecurityW(path.c_str(),DACL_SECURITY_INFORMATION,(PSECURITY_DESCRIPTOR)target.original.data(),needed,&needed))Fail(GetLastError(),L"No se pudieron leer permisos",path);
+ SecurityHandle handle(path,target.directory);
+ PSECURITY_DESCRIPTOR original=nullptr;
+ DWORD error=GetSecurityInfo(handle,SE_FILE_OBJECT,DACL_SECURITY_INFORMATION,nullptr,nullptr,nullptr,nullptr,&original);
+ if(error!=ERROR_SUCCESS)Fail(error,L"No se pudieron respaldar permisos",path);
+ DWORD needed=GetSecurityDescriptorLength(original);
+ target.original.assign((BYTE*)original,(BYTE*)original+needed);LocalFree(original);
  SECURITY_DESCRIPTOR_CONTROL control; DWORD revision;
  if(!GetSecurityDescriptorControl((PSECURITY_DESCRIPTOR)target.original.data(),&control,&revision))Fail(GetLastError(),L"Descriptor de seguridad invalido",path);
  target.wasProtected=(control&SE_DACL_PROTECTED)!=0;
  targets.push_back(std::move(target));
  if(!(attributes&FILE_ATTRIBUTE_DIRECTORY))return;
- WIN32_FIND_DATAW data;
- HANDLE search=FindFirstFileW((path+L"\\*").c_str(),&data);
- if(search==INVALID_HANDLE_VALUE) { if(GetLastError()==ERROR_FILE_NOT_FOUND)return; Fail(GetLastError(),L"No se pudo enumerar la carpeta",path); }
- try {
-  do {
-   if(wcscmp(data.cFileName,L".")&&wcscmp(data.cFileName,L".."))Collect(path+L"\\"+data.cFileName,targets);
-  }while(FindNextFileW(search,&data));
-  DWORD error=GetLastError(); if(error!=ERROR_NO_MORE_FILES)Fail(error,L"Enumeracion incompleta",path);
- }catch(...){ FindClose(search); throw; }
- FindClose(search);
+ std::vector<BYTE> buffer(65536);bool restart=true;
+ for(;;) {
+  if(!GetFileInformationByHandleEx(handle,restart?FileIdBothDirectoryRestartInfo:FileIdBothDirectoryInfo,buffer.data(),(DWORD)buffer.size())) {
+   DWORD enumerationError=GetLastError();if(enumerationError==ERROR_NO_MORE_FILES)break;
+   Fail(enumerationError,L"No se pudo enumerar la carpeta con respaldo administrativo",path);
+  }
+  restart=false;
+  auto entry=(FILE_ID_BOTH_DIR_INFO*)buffer.data();
+  for(;;) {
+   std::wstring name(entry->FileName,entry->FileNameLength/sizeof(wchar_t));
+   if(name!=L"."&&name!=L"..")Collect(path+L"\\"+name,targets);
+   if(!entry->NextEntryOffset)break;
+   entry=(FILE_ID_BOTH_DIR_INFO*)((BYTE*)entry+entry->NextEntryOffset);
+  }
+ }
 }
 static DWORD Secure(const std::wstring& input) {
  wchar_t root[32768];
@@ -66,6 +116,7 @@ static DWORD Secure(const std::wstring& input) {
  wchar_t volume[MAX_PATH]; DWORD flags=0;
  if(!GetVolumePathNameW(path.c_str(),volume,MAX_PATH)||!GetVolumeInformationW(volume,nullptr,0,nullptr,nullptr,&flags,nullptr,0))Fail(GetLastError(),L"No se pudo comprobar el volumen de datos",path);
  if(!(flags&FILE_PERSISTENT_ACLS))Fail(ERROR_NOT_SUPPORTED,L"El volumen debe admitir permisos persistentes NTFS/ReFS",path);
+ ScopedPrivilege backup(SE_BACKUP_NAME),restore(SE_RESTORE_NAME);
  std::vector<Target> targets; Collect(path,targets);
  // Convertir la SDDL completa evita diferencias de idioma o resolucion de cuentas.
  PSECURITY_DESCRIPTOR directories=nullptr,files=nullptr;
@@ -75,15 +126,16 @@ static DWORD Secure(const std::wstring& input) {
  try {
   for(size_t i=targets.size();i-->0;) {
    const auto& target=targets[i];
-   if(!SetFileSecurityW(target.path.c_str(),DACL_SECURITY_INFORMATION|PROTECTED_DACL_SECURITY_INFORMATION,target.directory?directories:files))Fail(GetLastError(),L"No se pudieron aplicar permisos; revise propietario, antivirus o GPO",target.path);
+   DWORD error=ApplyDacl(target,target.directory?directories:files,true);
+   if(error!=ERROR_SUCCESS)Fail(error,L"No se pudieron aplicar permisos; revise propietario, antivirus o GPO",target.path);
    changed.push_back(i);
   }
  }catch(...) {
   // Revertir exclusivamente las ACL tocadas; nunca borrar ni alterar datos.
   for(auto index=changed.rbegin();index!=changed.rend();++index) {
    const auto& target=targets[*index];
-   DWORD flags=DACL_SECURITY_INFORMATION|(target.wasProtected?PROTECTED_DACL_SECURITY_INFORMATION:UNPROTECTED_DACL_SECURITY_INFORMATION);
-   if(!SetFileSecurityW(target.path.c_str(),flags,(PSECURITY_DESCRIPTOR)target.original.data()))Log(L"ATENCION: no se pudo revertir ACL: "+target.path);
+   try { if(ApplyDacl(target,(PSECURITY_DESCRIPTOR)target.original.data(),target.wasProtected)!=ERROR_SUCCESS)Log(L"ATENCION: no se pudo revertir ACL: "+target.path); }
+   catch(...) { Log(L"ATENCION: no se pudo abrir para revertir ACL: "+target.path); }
   }
   LocalFree(directories);LocalFree(files);throw;
  }
@@ -126,7 +178,7 @@ int wmain(int argc,wchar_t** argv) {
  if(!log.empty())logHandle=CreateFileW(log.c_str(),FILE_APPEND_DATA,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
  DWORD result=0;
  try {
-  Log(L"QualityLite SetupHelper 0.1.2 - bootstrap nativo Win32 x64 /MT");
+  Log(L"QualityLite SetupHelper 0.2.1 - bootstrap nativo Win32 x64 /MT");
   if((root.empty()&&!stop)||logHandle==INVALID_HANDLE_VALUE)Fail(ERROR_INVALID_PARAMETER,L"Se requieren --root y --log con rutas escribibles");
   result=stop?StopServiceControlled():Secure(root);
  }catch(const Failure& failure) { Log(L"ERROR: "+failure.message); result=failure.code; }

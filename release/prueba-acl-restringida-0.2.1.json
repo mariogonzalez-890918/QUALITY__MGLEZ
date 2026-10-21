@@ -1,0 +1,17 @@
+{
+  "version": "0.2.1",
+  "result": "passed",
+  "windows": "Microsoft Windows 11 Pro",
+  "ordinary_acl_read_error": 5,
+  "previous_helper_exit": 5,
+  "fixed_helper_exit": 0,
+  "exact_log_file_denial_reproduced": true,
+  "restricted_directory_exit": 0,
+  "restricted_file_and_directory_recovered": true,
+  "owner_preserved": true,
+  "file_hash_preserved": true,
+  "acl_principals_verified": true,
+  "idempotent": true,
+  "reparse_rejected_without_acl_changes": true,
+  "tested_on_actual_windows_server": false
+}

@@ -1,10 +1,10 @@
-#define ReleaseVersion "0.2.0"
+#define ReleaseVersion "0.2.1"
 #ifdef SERVER_EDITION
  #define EditionName "QualityLite Servidor"
- #define OutputName "QualityLite-Server-Setup-0.2.0-x64"
+ #define OutputName "QualityLite-Server-Setup-0.2.1-x64"
 #else
  #define EditionName "QualityLite Escritorio"
- #define OutputName "QualityLite-Desktop-Setup-0.2.0-x64"
+ #define OutputName "QualityLite-Desktop-Setup-0.2.1-x64"
 #endif
 [Setup]
 AppId={{1D81C2D4-A850-4829-A70D-91048BC19BC8}
@@ -36,6 +36,8 @@ Source: "manage.ps1"; DestDir: "{app}"
 Source: "apply_firewall.ps1"; DestDir: "{app}"
 Source: "MANUAL.md"; DestDir: "{app}"
 Source: "ARQUITECTURA.md"; DestDir: "{app}"
+Source: "CORRECCION-0.2.0.md"; DestDir: "{app}"
+Source: "CORRECCION-0.2.1.md"; DestDir: "{app}"
 Source: "THIRD_PARTY_NOTICES.txt"; DestDir: "{app}"
 [Icons]
 Name: "{group}\Abrir QualityLite"; Filename: "{app}\QualityLite.exe"; Parameters: "--open"
