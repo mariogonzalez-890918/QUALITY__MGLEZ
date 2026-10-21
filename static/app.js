@@ -1,0 +1,1 @@
+const add=document.getElementById('add-field');if(add){const append=()=>{const row=document.getElementById('field-template').content.cloneNode(true);row.querySelector('.remove-field').addEventListener('click',e=>e.target.closest('.fieldrow').remove());document.getElementById('designer').append(row)};add.addEventListener('click',append);append();}

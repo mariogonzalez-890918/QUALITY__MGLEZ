@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<h1>Historial de actividad</h1><section><table><tr><th>Fecha</th><th>Usuario</th><th>Operación</th><th>Elemento</th><th>Detalle</th></tr>{% for r in rows %}<tr><td>{{r.created}}</td><td>{{r.user}}</td><td>{{r.action}}</td><td>{{r.item}}</td><td>{{r.detail}}</td></tr>{% endfor %}</table></section>{% endblock %}

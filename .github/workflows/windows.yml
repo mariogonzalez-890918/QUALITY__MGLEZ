@@ -1,0 +1,39 @@
+name: Windows - compilar y comprobar instalador
+on:
+  push:
+    branches: [main, 'codex/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Preparar dependencias
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install -r requirements.txt pytest pyinstaller
+          $compiler = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path -LiteralPath $compiler)) { throw 'No se encontró Inno Setup del runner.' }
+          "QUALITYLITE_ISCC=$compiler" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Pruebas y compilación
+        shell: pwsh
+        run: .\build.ps1
+      - name: Ejecutable sin Python en PATH
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe smoke_frozen.py
+      - name: Instalación, servicio, actualización y desinstalación
+        shell: pwsh
+        run: .\test_installer.ps1
+      - name: Conservar entregables y diagnósticos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: QualityLite-Windows-0.1.1
+          path: release/

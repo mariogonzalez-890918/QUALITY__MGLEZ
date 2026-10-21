@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<h1>Empresa</h1><section><form method="post"><input type="hidden" name="_csrf" value="{{csrf()}}"><div class="grid">{% for k,v in values.items() %}<label>{{k|replace('_',' ')|capitalize}}<input name="{{k}}" value="{{v}}"></label>{% endfor %}</div><button class="primary">Guardar empresa</button></form></section>{% endblock %}

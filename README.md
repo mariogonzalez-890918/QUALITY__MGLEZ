@@ -30,4 +30,3 @@ python -m venv .venv
 - [Corrección del instalador 0.1.1](CORRECCION-0.1.1.md)
 
 Versión inicial de alcance parcial. Consultar las limitaciones antes de usarla en producción. No otorga certificación ISO.
-
