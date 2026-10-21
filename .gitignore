@@ -18,3 +18,5 @@ installer-log.txt
 freeze-log.txt
 build-log.txt
 test-log.txt
+
+tmp/

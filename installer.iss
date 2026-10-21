@@ -1,7 +1,15 @@
+#define ReleaseVersion "0.2.0"
+#ifdef SERVER_EDITION
+ #define EditionName "QualityLite Servidor"
+ #define OutputName "QualityLite-Server-Setup-0.2.0-x64"
+#else
+ #define EditionName "QualityLite Escritorio"
+ #define OutputName "QualityLite-Desktop-Setup-0.2.0-x64"
+#endif
 [Setup]
 AppId={{1D81C2D4-A850-4829-A70D-91048BC19BC8}
-AppName=QualityLite
-AppVersion=0.1.2
+AppName={#EditionName}
+AppVersion={#ReleaseVersion}
 AppPublisher=QualityLite
 DefaultDirName={autopf}\QualityLite
 DefaultGroupName=QualityLite
@@ -10,7 +18,7 @@ ArchitecturesInstallIn64BitMode=x64os
 MinVersion=10.0
 PrivilegesRequired=admin
 OutputDir=release
-OutputBaseFilename=QualityLite-Setup-0.1.2-x64
+OutputBaseFilename={#OutputName}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -25,6 +33,7 @@ Name: "{commonappdata}\QualityLite"
 Source: "build\native\QualityLiteSetupHelper.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\QualityLite\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "manage.ps1"; DestDir: "{app}"
+Source: "apply_firewall.ps1"; DestDir: "{app}"
 Source: "MANUAL.md"; DestDir: "{app}"
 Source: "ARQUITECTURA.md"; DestDir: "{app}"
 Source: "THIRD_PARTY_NOTICES.txt"; DestDir: "{app}"
@@ -46,6 +55,17 @@ var
  NativeLog: String;
  InstallFailed: Boolean;
  InstallError: String;
+ NetworkPage: TInputQueryWizardPage;
+ NetworkConsent: TInputOptionWizardPage;
+
+function IsServerEdition: Boolean;
+begin
+#ifdef SERVER_EDITION
+ Result := True;
+#else
+ Result := False;
+#endif
+end;
 
 function SetupSucceeded: Boolean;
 begin
@@ -73,6 +93,37 @@ begin
  InstallFailed := False;
  Log('Diagnostico de arranque: ' + DiagnosticLog);
  Log('Diagnostico nativo: ' + NativeLog);
+ if IsServerEdition then begin
+  NetworkPage := CreateInputQueryPage(wpSelectDir, 'Configuracion del servidor', 'Direccion de escucha y puerto', 'Configure el acceso web. Una IP vacia conserva la configuracion anterior; en instalacion nueva se usa acceso local. Use 0.0.0.0 para todas las interfaces IPv4 o una IP del servidor.');
+  NetworkPage.Add('Direccion IPv4 (vacia = conservar):',False);
+  NetworkPage.Add('Puerto (vacio = automatico / conservar):',False);
+  NetworkConsent := CreateInputOptionPage(NetworkPage.ID, 'Acceso a la red local', 'Autorice expresamente el acceso LAN', 'La regla se limita a la subred local en perfiles privado y dominio. No abre Internet ni modifica el router.',False,False);
+  NetworkConsent.Add('Autorizar acceso LAN para la IP indicada');
+ end;
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+var Host: String; Port, I: Integer;
+begin
+ Result := True;
+ if IsServerEdition then begin
+  Host := Trim(NetworkPage.Values[0]);
+  if CurPageID = NetworkPage.ID then begin
+   for I := 1 to Length(Host) do
+    if not (((Host[I] >= '0') and (Host[I] <= '9')) or (Host[I] = '.')) then begin
+     MsgBox('Indique solamente una direccion IPv4.',mbError,MB_OK); Result := False; Exit;
+    end;
+   if Trim(NetworkPage.Values[1]) <> '' then begin
+    Port := StrToIntDef(Trim(NetworkPage.Values[1]),0);
+    if (Port < 1024) or (Port > 65535) then begin
+     MsgBox('El puerto debe estar entre 1024 y 65535.',mbError,MB_OK); Result := False; Exit;
+    end;
+   end;
+  end;
+  if (CurPageID = NetworkConsent.ID) and (Host <> '') and (Host <> '127.0.0.1') and (not NetworkConsent.Values[0]) then begin
+   MsgBox('Para escuchar en la red debe autorizar el acceso LAN, o usar 127.0.0.1 para acceso local.',mbError,MB_OK); Result := False;
+  end;
+ end;
 end;
 
 procedure RunChecked(FileName, Params: String);
@@ -100,11 +151,20 @@ begin
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
+var Host, Port: String;
 begin
  if CurStep = ssPostInstall then begin
   try
    RunApplication('--self-test');
    RunChecked(ExpandConstant('{app}\QualityLiteSetupHelper.exe'), '--root "' + ExpandConstant('{commonappdata}\QualityLite') + '" --log "' + NativeLog + '"');
+   if IsServerEdition then begin
+    Host := Trim(NetworkPage.Values[0]); Port := Trim(NetworkPage.Values[1]);
+    if (Host <> '') or (Port <> '') then begin
+     if Host = '' then Host := 'keep';
+     if Port = '' then Port := 'auto';
+     RunApplication('--configure-network ' + Host + ' ' + Port);
+    end;
+   end;
    RunApplication('--init');
    RunApplication('--startup auto --username "NT AUTHORITY\LocalService" install');
    RunChecked(ExpandConstant('{sys}\sc.exe'), 'failure QualityLite reset= 86400 actions= restart/5000/restart/15000/restart/60000');
@@ -112,6 +172,9 @@ begin
    RunApplication('--wait 30 start');
    RunApplication('--health');
    RunApplication('--publish-connection');
+   if IsServerEdition then
+    if (Trim(NetworkPage.Values[0]) <> '') or (Trim(NetworkPage.Values[1]) <> '') then
+     RunChecked(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{app}\apply_firewall.ps1') + '" -DataRoot "' + ExpandConstant('{commonappdata}\QualityLite') + '" -LogPath "' + DiagnosticLog + '"');
   except
    InstallFailed := True;
    InstallError := GetExceptionMessage;

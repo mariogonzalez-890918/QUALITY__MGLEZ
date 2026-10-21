@@ -72,6 +72,23 @@ def verify_backup(path):
 def main():
  command=sys.argv[1] if len(sys.argv)>1 else ''
  if command=='--serve': server().run()
+ elif command=='--configure-network':
+  import ipaddress
+  if len(sys.argv)!=4: raise ValueError('Indique IPv4 y puerto o auto')
+  cfg=config(); host=cfg['host'] if sys.argv[2]=='keep' else sys.argv[2]
+  ipaddress.IPv4Address(host)
+  automatic=sys.argv[3]=='auto'; port=cfg['port'] if automatic else int(sys.argv[3])
+  if not 1024<=port<=65535: raise ValueError('Puerto fuera del rango 1024-65535')
+  candidates=list(dict.fromkeys([port]+(list(range(8080,8181)) if automatic else [])))
+  chosen=None
+  for candidate in candidates:
+   try:
+    with socket.socket() as probe: probe.bind((host,candidate))
+    chosen=candidate; break
+   except OSError: continue
+  if chosen is None: raise ValueError('IP no disponible en este servidor o puerto ocupado')
+  cfg.update(host=host,port=chosen); pending=ROOT/'server.tmp'
+  pending.write_text(json.dumps(cfg),encoding='utf-8'); os.replace(pending,ROOT/'server.json')
  elif command=='--self-test':
   import magic,psutil,platform
   from PIL import Image

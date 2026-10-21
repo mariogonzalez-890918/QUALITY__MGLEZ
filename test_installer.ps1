@@ -6,7 +6,7 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 $dataRoot = Join-Path $env:ProgramData 'QualityLite'
 if ((Get-Service QualityLite -ErrorAction SilentlyContinue) -or (Test-Path -LiteralPath $dataRoot)) { throw 'El runner ya contiene QualityLite. No se tocarán datos existentes.' }
 $appRoot = Join-Path $env:RUNNER_TEMP 'QualityLite Installation Test'
-$setup = Join-Path $PSScriptRoot 'release\QualityLite-Setup-0.1.2-x64.exe'
+$setup = Join-Path $PSScriptRoot 'release\QualityLite-Desktop-Setup-0.2.0-x64.exe'
 $report = Join-Path $PSScriptRoot 'release\installer-test-result.txt'
 function Install-QualityLite([string]$logName) {
  $logPath = Join-Path $PSScriptRoot ('release\' + $logName)

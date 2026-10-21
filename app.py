@@ -10,6 +10,10 @@ from markupsafe import escape
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from openpyxl import Workbook
+from branding import save_logo
+from form_models import SERVICE_MODEL,schema_from_form,table_value
+from formal_pdf import render_pdf
+from formal_excel import export_excel
 
 MODULES = {'documents':'Documentos','forms':'Diseñador de formatos','records':'Registros','audits':'Auditorías','findings':'No conformidades','actions':'Acciones correctivas'}
 ROLES = ('Superusuario','Calidad','Auditor','Visor')
@@ -54,6 +58,15 @@ def create_app(data_dir=None):
  def setval(k,v): db().execute('INSERT OR REPLACE INTO settings VALUES(?,?)',(k,json.dumps(v,ensure_ascii=False)))
  def event(action,item=None,detail=''):
   db().execute('INSERT INTO events(user,action,item,detail,created) VALUES(?,?,?,?,?)',(session.get('uid') if has_request_context() else None,action,item,detail,datetime.now().isoformat(timespec='seconds')))
+ def brand_snapshot(): return {'company':setting('company',{}),'branding':setting('branding',{})}
+ def update_branding():
+  values=setting('branding',{})
+  values.update(department=request.form.get('brand_department',values.get('department',''))[:160],footer=request.form.get('brand_footer',values.get('footer',''))[:220])
+  file=request.files.get('logo')
+  if file and file.filename:
+   try: values['logo']=save_logo(root,file)
+   except ValueError as error: abort(400,str(error))
+  setval('branding',values)
  def allowed(module,write=False):
   role=g.user['role'] if g.get('user') else ''
   return role=='Superusuario' or (not write and module not in ('users','settings','backups','events','company')) or (role=='Calidad' and module in MODULES) or (role=='Auditor' and module in ('audits','findings','records'))
@@ -69,7 +82,12 @@ def create_app(data_dir=None):
  def csrf():
   if 'csrf' not in session: session['csrf']=secrets.token_hex(32)
   return session['csrf']
- app.jinja_env.globals.update(csrf=csrf,modules=MODULES,allowed=allowed,fields=FIELDS,types=TYPES,loads=json.loads)
+ app.jinja_env.globals.update(csrf=csrf,modules=MODULES,allowed=allowed,fields=FIELDS,types=TYPES,loads=json.loads,company_brand=lambda:setting('branding',{}),company_data=lambda:setting('company',{}),field_labels=__import__('formal_pdf').LABELS)
+ def ordered_sections(schema):
+  groups={}
+  for field in schema: groups.setdefault(field.get('section') or 'Datos del formato',[]).append(field)
+  return [{'grouper':key,'list':value} for key,value in groups.items()]
+ app.jinja_env.filters['sections']=ordered_sections
  @app.teardown_appcontext
  def close(exc):
   connection=g.pop('db',None)
@@ -87,7 +105,7 @@ def create_app(data_dir=None):
   elif not g.user and request.endpoint!='login': return redirect(url_for('login'))
  @app.after_request
  def headers(response):
-  response.headers.update({'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'same-origin','Content-Security-Policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; frame-ancestors 'none'",'Cache-Control':'no-store'})
+  response.headers.update({'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'same-origin','Content-Security-Policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: blob:; frame-ancestors 'none'",'Cache-Control':'no-store'})
   return response
  @app.errorhandler(400)
  @app.errorhandler(403)
@@ -111,6 +129,7 @@ def create_app(data_dir=None):
    if not request.form.get('razon_social') or not request.form.get('username'): abort(400)
    with LOCK:
     if setting('initialized'): abort(409)
+    update_branding()
     db().execute('INSERT INTO users(username,name,email,hash,role) VALUES(?,?,?,?,?)',(request.form['username'],request.form.get('nombre'),request.form.get('email'),generate_password_hash(password),'Superusuario'))
     setval('company',{k:request.form.get(k,'') for k in ('razon_social','nombre_comercial','rfc','domicilio','telefono','email','responsable_calidad','responsable_inocuidad','giro','productos','alcance','normas','areas')})
     setval('initialized',True); event('configuracion_inicial'); db().commit()
@@ -164,33 +183,33 @@ def create_app(data_dir=None):
   if request.method=='POST':
    data={k:request.form.get(k,'') for k in FIELDS.get(module,[])}
    if module=='forms':
-    schema=[]
-    for label,typ,required,opts in zip(request.form.getlist('label'),request.form.getlist('type'),request.form.getlist('required'),request.form.getlist('options')):
-     if label.strip():
-      if typ not in TYPES: abort(400)
-      schema.append({'id':'f'+str(len(schema)+1),'label':label.strip(),'type':typ,'required':required=='si','options':[o.strip() for o in opts.split(',') if o.strip()]})
-    if not schema: abort(400,'Agregue al menos un campo')
-    data['schema']=schema
+    try: data['schema']=schema_from_form(request.form,TYPES)
+    except ValueError as error: abort(400,str(error))
    if module=='records':
     if not form: abort(400,'Seleccione formato vigente')
     data={'form_id':form['id'],'form_code':form['code'],'form_version':form['version'],'schema':json.loads(form['data'])['schema'],'answers':{}}
     for f in data['schema']:
      value=request.form.getlist(f['id']) if f['type']=='multiple' else request.form.get(f['id'],'')
+     if f['type']=='tabla':
+      try: value=table_value(value,f.get('options',[]))
+      except ValueError as error: abort(400,str(error))
      if f['required'] and f['type'] not in ('archivo','fotografia','evidencia') and not value: abort(400,'Campo obligatorio: '+f['label'])
      if f['type']=='numero' and value:
       try: float(value)
       except ValueError: abort(400,'Número inválido')
      data['answers'][f['id']]=value
+   data['_brand']=brand_snapshot()
    now=datetime.now().isoformat(timespec='seconds')
    code=request.form.get('codigo','').strip() or module.upper()+'-'+secrets.token_hex(5).upper()
    title=request.form.get('titulo','').strip() or (form['title'] if form else '')
    if not title: abort(400,'Título obligatorio')
+   if len(title)>160 or len(code)>80: abort(400,'Título o código demasiado largo')
    try:
     cur=db().execute('INSERT INTO items(module,code,title,data,owner,created,updated) VALUES(?,?,?,?,?,?,?)',(module,code,title,json.dumps(data,ensure_ascii=False),g.user['id'],now,now))
     upload(cur.lastrowid,data.get('schema',[])); event('creacion',cur.lastrowid); db().commit()
    except sqlite3.IntegrityError: abort(409,'Código ya existente')
    return redirect(url_for('detail',i=cur.lastrowid))
-  return render_template('edit.html',module=module,forms=forms,form=form)
+  return render_template('edit.html',module=module,forms=forms,form=form,model=SERVICE_MODEL if module=='forms' and request.args.get('model')=='service' else None)
  def upload(i,schema=()):
   import magic
   for field in request.files:
@@ -256,15 +275,21 @@ def create_app(data_dir=None):
       for f in data.get('schema',[]):
        if f['type'] not in ('fotografia','archivo','evidencia'):
         value=request.form.get(f['id'],'')
+        if f['type']=='multiple': value=request.form.getlist(f['id'])
+        if f['type']=='tabla':
+         try: value=table_value(value,f.get('options',[]))
+         except ValueError as error: abort(400,str(error))
         if f['required'] and not value: abort(400,'Campo obligatorio: '+f['label'])
         data['answers'][f['id']]=value
      db().execute('UPDATE items SET title=?,data=?,updated=? WHERE id=?',(request.form.get('titulo') or row['title'],json.dumps(data,ensure_ascii=False),datetime.now().isoformat(),i)); event('edicion',i)
+     upload(i,data.get('schema',[]))
     else: abort(400)
     db().commit()
    return redirect(url_for('detail',i=i))
   files=db().execute('SELECT * FROM files WHERE item=?',(i,)).fetchall()
   events=db().execute('SELECT * FROM events WHERE item=? ORDER BY id',(i,)).fetchall()
-  return render_template('detail.html',row=row,data=data,files=files,events=events)
+  snapshot=data.get('_brand') or brand_snapshot()
+  return render_template('detail.html',row=row,data=data,files=files,events=events,brand=snapshot.get('branding',{}),company=snapshot.get('company',{}))
  @app.get('/file/<int:f>')
  def file(f):
   row=db().execute('SELECT * FROM files WHERE id=?',(f,)).fetchone()
@@ -288,20 +313,12 @@ def create_app(data_dir=None):
  def make_export(rows,kind,name):
   out=io.BytesIO()
   if kind=='xlsx':
-   book=Workbook(); sheet=book.active; sheet.title='QualityLite'; sheet.append(['Código','Título','Versión','Estado','Datos','Fecha'])
-   for r in rows:
-    values=[r['code'],r['title'],r['version'],r['state'],r['data'],r['created']]
-    sheet.append(["'"+v if isinstance(v,str) and v.startswith(('=','+','-','@')) else v for v in values])
-   sheet.auto_filter.ref=sheet.dimensions; sheet.freeze_panes='A2'; book.save(out)
+   users={r['id']:r['name'] or r['username'] for r in db().execute('SELECT id,name,username FROM users')}
+   out.write(export_excel(rows,setting('company',{}),setting('branding',{}),root,users,'Reporte de '+MODULES.get(name,name)))
   elif kind=='pdf':
-   styles=getSampleStyleSheet(); story=[Paragraph(str(escape(setting('company',{}).get('razon_social','QualityLite'))),styles['Title'])]
-   for r in rows:
-    story.extend([Paragraph(str(escape(f"{r['code']} · {r['title']} · v{r['version']} · {r['state']}")),styles['Heading2']),Paragraph(str(escape(r['created'])),styles['Normal'])])
-    data=json.loads(r['data'])
-    for k,v in data.items(): story.append(Paragraph(str(escape(f'{k}: {v}')),styles['Normal']))
-    for f in db().execute('SELECT * FROM files WHERE item=?',(r['id'],)): story.append(Paragraph(str(escape(f"Evidencia: {f['name']} | {f['sha256']}")),styles['Normal']))
-    story.append(Spacer(1,14))
-   SimpleDocTemplate(out).build(story)
+   users={r['id']:r['name'] or r['username'] for r in db().execute('SELECT id,name,username FROM users')}
+   files={r['id']:[dict(f) for f in db().execute('SELECT * FROM files WHERE item=?',(r['id'],))] for r in rows}
+   out.write(render_pdf(rows,setting('company',{}),setting('branding',{}),root,files,users,report_title=('Reporte de '+MODULES.get(name,name)) if not name.startswith('registro-') else None))
   else: abort(404)
   out.seek(0); return send_file(out,download_name=f'{name}.{kind}',as_attachment=True)
  @app.get('/item/<int:i>/pdf')
@@ -311,8 +328,14 @@ def create_app(data_dir=None):
   require('company',True)
   values=setting('company',{})
   if request.method=='POST':
+   update_branding()
    values={k:request.form.get(k,'') for k in values}; setval('company',values); event('empresa'); db().commit(); flash('Empresa actualizada')
-  return render_template('company.html',values=values)
+  return render_template('company.html',values=values,brand=setting('branding',{}))
+ @app.get('/branding/<filename>')
+ def logo(filename):
+  import re
+  if not re.fullmatch(r'branding-[a-f0-9]{32}\.png',filename): abort(404)
+  return send_file(root/'files'/filename,mimetype='image/png')
  @app.route('/users',methods=['GET','POST'])
  def users():
   require('users',True)

@@ -22,7 +22,7 @@ jobs:
         shell: pwsh
         run: |
           python -m venv .venv
-          .\.venv\Scripts\python.exe -m pip install -r requirements.txt pytest pyinstaller
+          .\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
           $compiler = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
           if (-not (Test-Path -LiteralPath $compiler)) { throw 'No se encontró Inno Setup del runner.' }
           "QUALITYLITE_ISCC=$compiler" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
@@ -39,5 +39,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: QualityLite-0.1.2-${{ matrix.os }}
+          name: QualityLite-0.2.0-${{ matrix.os }}
           path: release/

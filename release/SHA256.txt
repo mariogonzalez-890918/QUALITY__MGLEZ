@@ -1,5 +1,9 @@
 
 Algorithm : SHA256
-Hash      : 7A0A8582AACEB03B9C78300650ABBFBC13B319BA2C80B879863F23B29F447227
-Path      : C:\Users\siste\OneDrive\Documentos\ChatGPT\JAD\qualitylite\release\QualityLite-Setup-0.1.2-x64.exe
+Hash      : E08E8C3332FFC1E70400853060256D853F55E6BE67E57622C57E51322E22B65A
+Path      : C:\Users\siste\OneDrive\Documentos\ChatGPT\JAD\qualitylite\release\QualityLite-Desktop-Setup-0.2.0-x64.exe
+
+Algorithm : SHA256
+Hash      : F298FF066A5C4E56677522A79626B4D7AF94C19E5327CDBAD08AB7D31E5BAE8E
+Path      : C:\Users\siste\OneDrive\Documentos\ChatGPT\JAD\qualitylite\release\QualityLite-Server-Setup-0.2.0-x64.exe
 

@@ -6,7 +6,7 @@ import tempfile
 import traceback
 from pathlib import Path
 
-VERSION='0.1.2'
+VERSION='0.2.0'
 
 def parse_options(args):
  remaining=[]; options={}; index=0
