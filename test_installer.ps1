@@ -6,7 +6,7 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 $dataRoot = Join-Path $env:ProgramData 'QualityLite'
 if ((Get-Service QualityLite -ErrorAction SilentlyContinue) -or (Test-Path -LiteralPath $dataRoot)) { throw 'El runner ya contiene QualityLite. No se tocarán datos existentes.' }
 $appRoot = Join-Path $env:RUNNER_TEMP 'QualityLite Installation Test'
-$setup = Join-Path $PSScriptRoot 'release\QualityLite-Setup-0.1.1-x64.exe'
+$setup = Join-Path $PSScriptRoot 'release\QualityLite-Setup-0.1.2-x64.exe'
 $report = Join-Path $PSScriptRoot 'release\installer-test-result.txt'
 function Install-QualityLite([string]$logName) {
  $logPath = Join-Path $PSScriptRoot ('release\' + $logName)
@@ -20,6 +20,8 @@ function Install-QualityLite([string]$logName) {
  $cfg = Get-Content -LiteralPath (Join-Path $dataRoot 'server.json') -Raw | ConvertFrom-Json
  $health = Invoke-RestMethod -Uri ("http://127.0.0.1:" + $cfg.port + '/health')
  if ($health.status -ne 'ok') { throw 'Salud HTTP fallida.' }
+ $public = Get-Content -LiteralPath (Join-Path $appRoot 'connection.json') -Raw | ConvertFrom-Json
+ if ($public.port -ne $cfg.port) { throw 'URL publica no coincide con el servicio.' }
 }
 try {
  Install-QualityLite 'install-clean.log'

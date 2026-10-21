@@ -40,6 +40,9 @@ class QualityLiteService(win32serviceutil.ServiceFramework):
  _svc_name_='QualityLite'
  _svc_display_name_='QualityLite - Calidad e inocuidad'
  _svc_description_='Aplicación local de gestión documental, formatos y evidencias.'
+ if getattr(sys,'frozen',False):
+  import subprocess
+  _exe_args_=subprocess.list2cmdline(['--data-root',str(ROOT)])
  def __init__(self,args):
   super().__init__(args); self.stop_event=win32event.CreateEvent(None,0,0,None); self.http=None
  def SvcStop(self):
@@ -69,6 +72,30 @@ def verify_backup(path):
 def main():
  command=sys.argv[1] if len(sys.argv)>1 else ''
  if command=='--serve': server().run()
+ elif command=='--self-test':
+  import magic,psutil,platform
+  from PIL import Image
+  import app as application_module
+  if os.name!='nt' or sys.maxsize<2**32 or sys.getwindowsversion().major<10:
+   raise RuntimeError('Se requiere Windows 10/11 o Server 2016/2019/2022/2025 de 64 bits')
+  magic.from_buffer(b'QualityLite\n',mime=True)
+  psutil.net_if_addrs()
+  with closing(sqlite3.connect(':memory:')) as connection: connection.execute('SELECT 1').fetchone()
+  if not (Path(application_module.__file__).parent/'templates'/'setup.html').is_file():
+   raise RuntimeError('Instalacion incompleta: faltan plantillas')
+ elif command=='--publish-connection':
+  cfg=config()
+  directory=Path(sys.executable).parent if getattr(sys,'frozen',False) else Path(__file__).parent
+  target=directory/'connection.json'; pending=target.with_suffix('.tmp')
+  pending.write_text(json.dumps({k:cfg[k] for k in ('host','port','name')}),encoding='utf-8')
+  os.replace(pending,target)
+ elif command=='--data-status':
+  import ctypes
+  if not ctypes.windll.shell32.IsUserAnAdmin(): raise PermissionError('Diagnostico local exclusivo de administradores')
+  with closing(sqlite3.connect((ROOT/'qualitylite.db').as_uri()+'?mode=ro',uri=True)) as connection:
+   counts={table:connection.execute('SELECT count(*) FROM '+table).fetchone()[0] for table in ('users','items','files','settings')}
+   counts['integrity']=connection.execute('PRAGMA quick_check').fetchone()[0]
+  print(json.dumps(counts))
  elif command=='--secure-data':
   import ctypes
   from windows_setup import secure_data

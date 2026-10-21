@@ -13,6 +13,8 @@ env.pop('PYTHONHOME',None); env.pop('PYTHONPATH',None)
 url=f'http://127.0.0.1:{port}'
 results=[]
 def record(name): results.append(name); print('OK',name,flush=True)
+subprocess.run([str(exe),'--self-test'],env=env,check=True,creationflags=subprocess.CREATE_NO_WINDOW)
+record('Comprobación de bibliotecas antes de configurar datos')
 subprocess.run([str(exe),'--init'],env=env,check=True,creationflags=subprocess.CREATE_NO_WINDOW)
 record('Ejecutable --init sin Python en PATH')
 process=subprocess.Popen([str(exe),'--serve'],env=env,creationflags=subprocess.CREATE_NO_WINDOW)
@@ -28,6 +30,16 @@ try:
  record('Waitress responde por HTTP real')
  subprocess.run([str(exe),'--health'],env=env,check=True,creationflags=subprocess.CREATE_NO_WINDOW)
  record('Comprobación de salud del ejecutable')
+ connection_path=exe.parent/'connection.json'
+ previous_connection=connection_path.read_bytes() if connection_path.exists() else None
+ try:
+  subprocess.run([str(exe),'--publish-connection'],env=env,check=True,creationflags=subprocess.CREATE_NO_WINDOW)
+  value=subprocess.run([str(exe),'--connection-url'],env=env,check=True,capture_output=True,creationflags=subprocess.CREATE_NO_WINDOW)
+  assert value.stdout.decode().strip()==url
+ finally:
+  if previous_connection is None: connection_path.unlink(missing_ok=True)
+  else: connection_path.write_bytes(previous_connection)
+ record('URL publica sin acceso a configuracion privada')
  jar=http.cookiejar.CookieJar(); client=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
  def get(path):
   with client.open(url+path,timeout=15) as r: return r.read()

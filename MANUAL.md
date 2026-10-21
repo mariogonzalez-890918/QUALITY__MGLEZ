@@ -1,8 +1,8 @@
-# QualityLite 0.1 — manual de instalación, administración y usuario
+# QualityLite 0.1.2 — manual de instalación, administración y usuario
 
 ## Instalación
 
-Ejecutar `QualityLite-Setup-0.1.0-x64.exe` como administrador en Windows x64. No requiere Python, pip ni Node. Se instala en Program Files, crea el servicio automático QualityLite bajo LocalService, configura recuperación de fallos y verifica `/health`. Los datos permanecen en `C:\ProgramData\QualityLite`. En instalación inicial busca un puerto libre entre 8080 y 8180. Si ninguno está disponible o una configuración previa tiene conflicto, consultar `launcher-error.log`, modificar `server.json` con el servicio detenido y repetir instalación.
+Ejecutar `QualityLite-Setup-0.1.2-x64.exe` como administrador en Windows x64. No requiere Python, pip ni Node. Se instala en Program Files, crea el servicio automático QualityLite bajo LocalService, configura recuperación de fallos y verifica `/health`. Los datos permanecen en `C:\ProgramData\QualityLite`. En instalación inicial busca un puerto libre entre 8080 y 8180. Si ninguno está disponible o una configuración previa tiene conflicto, consultar `launcher-error.log`, modificar `server.json` con el servicio detenido y repetir instalación.
 
 Abrir el acceso directo QualityLite en el servidor. Copiar el token de `setup-token.txt` desde ProgramData (requiere administrador local); completar empresa y superusuario con contraseña mínima de 12 caracteres. No hay clave universal. El token se elimina después. El asistente se bloquea tras finalizar.
 
@@ -38,6 +38,11 @@ Antes de actualizar crear y descargar respaldo. Ejecutar instalador en la misma 
 
 ## Compilar y probar
 
-Entorno de desarrollo Windows x64 con Python 3.12: crear `.venv`, instalar `requirements.txt`, `pytest` y `pyinstaller`, instalar Inno Setup oficial en `tools\inno` o adaptar build.ps1. Ejecutar build.ps1: genera plantillas, ejecuta pytest, congela dependencias, compila binario y genera instalador. `requirements-lock.txt` conserva las versiones efectivas. Consultar licencias de dependencias y condiciones comerciales de Inno Setup antes de distribuir comercialmente.
+Entorno de desarrollo Windows x64 con Python 3.12: crear `.venv`, instalar `requirements.txt`, `pytest` y `pyinstaller`, instalar Visual C++ Build Tools (C++ x64 y Windows SDK) e Inno Setup oficial en `tools\inno` o adaptar build.ps1. Ejecutar build.ps1: genera plantillas, ejecuta pytest, congela dependencias, compila binario y genera instalador. `requirements-lock.txt` conserva las versiones efectivas. Consultar licencias de dependencias y condiciones comerciales de Inno Setup antes de distribuir comercialmente.
 
 No existe afirmación automática de conformidad ISO. La empresa debe revisar documentos y validar el sistema según sus necesidades.
+
+
+## Instalación en servidores (revisión 0.1.2)
+
+Consultar CORRECCION-0.1.2.md para la matriz de sistemas objetivo y resultados reales. Los fallos se diagnostican en ProgramData\QualityLite-SetupLogs. La preparación de permisos utiliza un binario nativo independiente y el acceso directo utiliza connection.json público de Program Files. No eliminar bases ni evidencias ni deshabilitar las protecciones del servidor.

@@ -1,0 +1,12 @@
+{
+    "version":  "0.1.2",
+    "windows":  "Microsoft Windows 11 Pro",
+    "result":  "passed",
+    "tests":  [
+                  "ACL reales de directorio y archivo",
+                  "Solo SYSTEM, Administradores y LocalService",
+                  "Conservacion del archivo original",
+                  "Rutas con espacios y caracteres no ASCII",
+                  "Reaplicacion idempotente"
+              ]
+}

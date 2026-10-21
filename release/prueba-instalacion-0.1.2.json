@@ -1,0 +1,13 @@
+{
+    "version":  "0.1.2",
+    "result":  "passed",
+    "windows":  "Microsoft Windows 11 Pro",
+    "upgraded_existing":  true,
+    "service_state":  "Running",
+    "service_start":  "Auto",
+    "service_account":  "NT AUTHORITY\\LocalService",
+    "data_integrity":  "ok",
+    "original_counts_preserved":  true,
+    "original_key_and_config_preserved":  true,
+    "url":  "http://127.0.0.1:8081/"
+}

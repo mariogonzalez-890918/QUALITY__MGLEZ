@@ -7,7 +7,11 @@ permissions:
   contents: read
 jobs:
   windows:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -35,5 +39,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: QualityLite-Windows-0.1.1
+          name: QualityLite-0.1.2-${{ matrix.os }}
           path: release/

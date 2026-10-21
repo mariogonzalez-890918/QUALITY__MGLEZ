@@ -4,13 +4,13 @@ Aplicación local de calidad e inocuidad: Flask, Waitress, SQLite y servicio Win
 
 ## Descargar e instalar
 
-El instalador actualizado es `release/QualityLite-Setup-0.1.1-x64.exe`. Ejecutar como administrador. Esta revisión reemplaza el paso de permisos que fallaba en 0.1.0 y conserva los datos existentes. No requiere instalar Python en el equipo destino.
+El instalador actualizado es `release/QualityLite-Setup-0.1.2-x64.exe`. Ejecutar como administrador. Esta revisión reemplaza el paso de permisos que fallaba en 0.1.0 y conserva los datos existentes. No requiere instalar Python en el equipo destino.
 
 Los datos se guardan en `%ProgramData%\QualityLite`. El navegador se abre desde el acceso directo después de que el instalador comprueba la salud del servicio. La configuración inicial requiere el token local `setup-token.txt`.
 
 ## Desarrollo
 
-En Windows x64 con Python 3.12:
+En Windows x64 con Python 3.12, Visual C++ Build Tools (C++ x64 y Windows SDK) e Inno Setup:
 
 ```powershell
 python -m venv .venv
@@ -27,6 +27,6 @@ python -m venv .venv
 - [Manual de instalación, administración y usuario](MANUAL.md)
 - [Arquitectura y limitaciones funcionales](ARQUITECTURA.md)
 - [Informe original de entrega](ENTREGA.md)
-- [Corrección del instalador 0.1.1](CORRECCION-0.1.1.md)
+- [Corrección del instalador 0.1.2](CORRECCION-0.1.2.md)
 
 Versión inicial de alcance parcial. Consultar las limitaciones antes de usarla en producción. No otorga certificación ISO.

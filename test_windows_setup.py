@@ -49,7 +49,13 @@ def test_service_error_code_is_returned(tmp_path,monkeypatch):
 def test_installer_uses_native_acl_and_waits():
  text=(Path(__file__).parent/'installer.iss').read_text(encoding='utf-8')
  assert 'icacls.exe' not in text
- assert "'--secure-data'" in text
+ assert "'--secure-data'" not in text
+ assert 'QualityLiteSetupHelper.exe' in text
+ assert '--stop-service' in text
  assert "'--wait 30 start'" in text
- assert "'--wait 30 stop'" in text
+ assert 'Parameters: "--wait 30 stop"' in text
  assert 'SetupLogging=yes' in text
+ assert '--self-test' in text
+ assert '--publish-connection' in text
+ assert 'GetCustomSetupExitCode' in text
+ assert 'QualityLite-SetupLogs' in text

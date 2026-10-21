@@ -14,6 +14,8 @@ switch ($choice) {
   if ($config.host -ne '127.0.0.1') {
    New-NetFirewallRule -DisplayName 'QualityLite HTTP LAN' -Direction Inbound -Action Allow -Protocol TCP -LocalPort $config.port -Profile Private,Domain -RemoteAddress LocalSubnet -Program (Join-Path $PSScriptRoot 'QualityLite.exe')
   }
+  & (Join-Path $PSScriptRoot 'QualityLite.exe') --data-root $root --publish-connection
+  if ($LASTEXITCODE -ne 0) { throw 'No se pudo publicar la URL de acceso.' }
   Restart-Service -Name QualityLite
  }
  default { Write-Host 'Opción inválida' }
